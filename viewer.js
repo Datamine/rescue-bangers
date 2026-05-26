@@ -448,30 +448,29 @@ function buildQuoteTweetCard(tweet) {
 }
 
 function buildMediaBlock(mediaEntry) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "media-item";
-
-  const label = document.createElement("p");
-  label.className = "media-item__label";
-  label.textContent = mediaEntry.label;
-  wrapper.append(label);
-
-  const link = document.createElement("a");
-  link.href = mediaEntry.url;
-  link.target = "_blank";
-  link.rel = "noreferrer";
-  link.textContent = mediaEntry.url;
-  wrapper.append(link);
-
   if (looksLikePreviewableImage(mediaEntry.url)) {
+    const link = document.createElement("a");
+    link.className = "media-preview-link";
+    link.href = mediaEntry.url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.setAttribute("aria-label", mediaEntry.label);
+
     const image = document.createElement("img");
     image.className = "media-preview";
     image.src = mediaEntry.url;
     image.alt = mediaEntry.label;
-    wrapper.append(image);
+    link.append(image);
+    return link;
   }
 
-  return wrapper;
+  const link = document.createElement("a");
+  link.className = "media-link";
+  link.href = mediaEntry.url;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = mediaEntry.label;
+  return link;
 }
 
 function getTweetId(item) {
@@ -782,10 +781,36 @@ function collectMediaEntries(tweetResult) {
 
   for (const mediaItem of allMedia) {
     addMedia(mediaItem.media_url_https, mediaItem.type || "media");
-    addMedia(mediaItem.expanded_url, `${mediaItem.type || "media"} page`);
+    if (!isRedundantMediaPageUrl(mediaItem.expanded_url, tweetResult)) {
+      addMedia(mediaItem.expanded_url, `${mediaItem.type || "media"} page`);
+    }
   }
 
   return media;
+}
+
+function isRedundantMediaPageUrl(url, tweetResult) {
+  if (typeof url !== "string" || !url) {
+    return false;
+  }
+
+  const tweetId = tweetResult && typeof tweetResult.rest_id === "string"
+    ? tweetResult.rest_id
+    : tweetResult && tweetResult.legacy && typeof tweetResult.legacy.id_str === "string"
+      ? tweetResult.legacy.id_str
+      : "";
+
+  if (!tweetId) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/status\/(\d+)(?:\/(?:photo|video)\/\d+)?\/?$/);
+    return !!match && match[1] === tweetId;
+  } catch (error) {
+    return false;
+  }
 }
 
 function inferThreadDepth(moduleItem, siblingIndex) {

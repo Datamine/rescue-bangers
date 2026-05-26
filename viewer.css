@@ -267,22 +267,29 @@ button:disabled {
   margin-top: 12px;
 }
 
-.media-item {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.45);
-}
-
-.media-item__label {
-  margin: 0 0 8px;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.media-item a {
+.media-link,
+.media-preview-link {
   color: var(--accent);
+  text-decoration: none;
+}
+
+.media-link {
   word-break: break-word;
+}
+
+.media-link:hover,
+.media-preview-link:hover {
+  text-decoration: underline;
+}
+
+.media-preview-link {
+  display: inline-block;
+}
+
+.quote-tweet .media-link,
+.quote-tweet .media-preview-link,
+.media-list > a {
+  color: var(--accent);
 }
 
 .media-preview {
