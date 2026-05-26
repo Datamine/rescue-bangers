@@ -122,6 +122,7 @@ function buildRecoveredTweets(entries) {
       tweet = {
         id: tweetId,
         url: buildTweetUrl(entry),
+        profileImageUrl: "",
         authorIds: new Set(),
         authorHandles: new Set(),
         authorNames: new Set(),
@@ -131,6 +132,7 @@ function buildRecoveredTweets(entries) {
         mediaKeys: new Set(),
         metrics: null,
         text: "",
+        quoteTweet: null,
         latestTriggeredOn: 0,
         position: Number.POSITIVE_INFINITY,
         fallbackOrder: fallbackOrder++,
@@ -151,6 +153,10 @@ function buildRecoveredTweets(entries) {
 
     if (entry.authorName) {
       tweet.authorNames.add(entry.authorName);
+    }
+
+    if (!tweet.profileImageUrl && entry.profileImageUrl) {
+      tweet.profileImageUrl = entry.profileImageUrl;
     }
 
     if (entry.context) {
@@ -179,6 +185,10 @@ function buildRecoveredTweets(entries) {
 
     if (entry.text.length > tweet.text.length) {
       tweet.text = entry.text;
+    }
+
+    if (!tweet.quoteTweet && entry.quoteTweet) {
+      tweet.quoteTweet = entry.quoteTweet;
     }
 
     for (const mediaEntry of entry.media) {
@@ -255,7 +265,19 @@ function buildTweetCard(tweet) {
   const article = document.createElement("article");
   article.className = "tweet-card";
 
+  const header = document.createElement("div");
+  header.className = "tweet-card__header";
+
+  if (tweet.profileImageUrl) {
+    const avatar = document.createElement("img");
+    avatar.className = "tweet-card__avatar";
+    avatar.src = tweet.profileImageUrl;
+    avatar.alt = tweet.authorHandles.length > 0 ? `@${tweet.authorHandles[0]}` : "Profile image";
+    header.append(avatar);
+  }
+
   const titleWrap = document.createElement("div");
+  titleWrap.className = "tweet-card__identity";
   const title = document.createElement("h3");
   title.className = "tweet-card__title";
   const link = document.createElement("a");
@@ -271,7 +293,8 @@ function buildTweetCard(tweet) {
     titleWrap.append(authorLink);
   }
 
-  article.append(titleWrap);
+  header.append(titleWrap);
+  article.append(header);
 
   if (tweet.text) {
     const text = document.createElement("p");
@@ -296,26 +319,119 @@ function buildTweetCard(tweet) {
     article.append(mediaList);
   }
 
+  if (tweet.quoteTweet) {
+    article.append(buildQuoteTweetCard(tweet.quoteTweet));
+  }
+
   return article;
 }
 
 function buildAuthorLink(tweet) {
   const handle = tweet.authorHandles.length > 0 ? tweet.authorHandles[0] : "";
-  if (!handle) {
+  const name = tweet.authorNames.length > 0 ? tweet.authorNames[0] : "";
+  if (!handle && !name) {
     return null;
   }
 
   const meta = document.createElement("p");
   meta.className = "tweet-card__meta";
 
-  const link = document.createElement("a");
-  link.href = `https://x.com/${handle}`;
-  link.target = "_blank";
-  link.rel = "noreferrer";
-  link.textContent = `@${handle}`;
-  meta.append(link);
+  if (name) {
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = name;
+    meta.append(nameSpan);
+  }
+
+  if (handle) {
+    if (name) {
+      meta.append(document.createTextNode(" "));
+    }
+
+    const link = document.createElement("a");
+    link.href = `https://x.com/${handle}`;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = `@${handle}`;
+    meta.append(link);
+  }
 
   return meta;
+}
+
+function buildQuoteTweetCard(tweet) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "quote-tweet";
+
+  const header = document.createElement("div");
+  header.className = "quote-tweet__header";
+
+  if (tweet.profileImageUrl) {
+    const avatar = document.createElement("img");
+    avatar.className = "quote-tweet__avatar";
+    avatar.src = tweet.profileImageUrl;
+    avatar.alt = tweet.authorHandle ? `@${tweet.authorHandle}` : "Quoted profile image";
+    header.append(avatar);
+  }
+
+  const identity = document.createElement("div");
+  identity.className = "quote-tweet__identity";
+
+  const title = document.createElement("p");
+  title.className = "quote-tweet__title";
+  if (tweet.authorName) {
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = tweet.authorName;
+    title.append(nameSpan);
+  }
+
+  if (tweet.authorHandle) {
+    if (tweet.authorName) {
+      title.append(document.createTextNode(" "));
+    }
+
+    const authorLink = document.createElement("a");
+    authorLink.href = `https://x.com/${tweet.authorHandle}`;
+    authorLink.target = "_blank";
+    authorLink.rel = "noreferrer";
+    authorLink.textContent = `@${tweet.authorHandle}`;
+    title.append(authorLink);
+  } else if (!tweet.authorName) {
+    title.textContent = tweet.authorName || `Tweet ${tweet.id}`;
+  }
+  identity.append(title);
+
+  const tweetLink = document.createElement("p");
+  tweetLink.className = "quote-tweet__link";
+  const link = document.createElement("a");
+  link.href = buildTweetUrl(tweet);
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = `Tweet ${tweet.id}`;
+  tweetLink.append(link);
+  identity.append(tweetLink);
+
+  header.append(identity);
+  wrapper.append(header);
+
+  if (tweet.text) {
+    const text = document.createElement("p");
+    text.className = "quote-tweet__text";
+    text.textContent = tweet.text;
+    wrapper.append(text);
+  }
+
+  if (Array.isArray(tweet.media) && tweet.media.length > 0) {
+    const mediaList = document.createElement("div");
+    mediaList.className = "media-list";
+
+    for (const mediaEntry of tweet.media) {
+      mediaList.append(buildMediaBlock(mediaEntry));
+    }
+
+    wrapper.append(mediaList);
+  }
+
+  return wrapper;
 }
 
 function buildMediaBlock(mediaEntry) {
@@ -510,6 +626,7 @@ function extractTweetFromItemContent(itemContent, options) {
   const user = unwrapUserResult(tweetResult.core && tweetResult.core.user_results && tweetResult.core.user_results.result);
   const userLegacy = user && user.legacy ? user.legacy : {};
   const screenName = user && user.core ? user.core.screen_name : "";
+  const quoteTweet = extractQuotedTweet(tweetResult);
 
   return {
     id: tweetResult.rest_id || legacy.id_str || "",
@@ -518,6 +635,7 @@ function extractTweetFromItemContent(itemContent, options) {
     context: options && options.context ? String(options.context) : "",
     suggestionType: itemContent.tweetDisplayType || itemContent.itemType || "",
     text: extractBestTweetText(tweetResult),
+    profileImageUrl: getProfileImageUrl(user),
     authorIds: collectAuthorIds(tweetResult, user, userLegacy),
     authorHandle: typeof screenName === "string" ? screenName : "",
     authorName: user && user.core && typeof user.core.name === "string" ? user.core.name : "",
@@ -526,6 +644,7 @@ function extractTweetFromItemContent(itemContent, options) {
     retweetedTweetId: legacy.retweeted_status_id_str || "",
     metrics: extractMetrics(tweetResult),
     media: collectMediaEntries(tweetResult),
+    quoteTweet,
     raw: tweetResult
   };
 }
@@ -650,6 +769,43 @@ function collectMediaEntries(tweetResult) {
   }
 
   return media;
+}
+
+function extractQuotedTweet(tweetResult) {
+  const quoted = unwrapTweetResult(tweetResult && tweetResult.quoted_status_result && tweetResult.quoted_status_result.result);
+  if (!quoted) {
+    return null;
+  }
+
+  const legacy = quoted.legacy || {};
+  const user = unwrapUserResult(quoted.core && quoted.core.user_results && quoted.core.user_results.result);
+  const screenName = user && user.core ? user.core.screen_name : "";
+  const userName = user && user.core ? user.core.name : "";
+
+  return {
+    id: quoted.rest_id || legacy.id_str || "",
+    authorHandle: typeof screenName === "string" ? screenName : "",
+    authorName: typeof userName === "string" ? userName : "",
+    profileImageUrl: getProfileImageUrl(user),
+    text: extractBestTweetText(quoted),
+    media: collectMediaEntries(quoted)
+  };
+}
+
+function getProfileImageUrl(user) {
+  if (!user || typeof user !== "object") {
+    return "";
+  }
+
+  if (user.avatar && typeof user.avatar.image_url === "string") {
+    return user.avatar.image_url;
+  }
+
+  if (user.legacy && typeof user.legacy.profile_image_url_https === "string") {
+    return user.legacy.profile_image_url_https;
+  }
+
+  return "";
 }
 
 function buildTweetUrl(entry) {

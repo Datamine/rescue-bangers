@@ -166,12 +166,26 @@ button:disabled {
   background: rgba(255, 250, 242, 0.78);
 }
 
-.tweet-card__top {
+.tweet-card__header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 14px;
   margin-bottom: 10px;
+}
+
+.tweet-card__avatar,
+.quote-tweet__avatar {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgba(28, 26, 24, 0.08);
+}
+
+.tweet-card__identity,
+.quote-tweet__identity {
+  min-width: 0;
 }
 
 .tweet-card__title {
@@ -256,9 +270,60 @@ button:disabled {
 
 .media-preview {
   display: block;
-  max-width: 100%;
+  width: auto;
+  max-width: 500px;
+  max-height: 400px;
+  height: auto;
   border-radius: 12px;
   margin-top: 10px;
+}
+
+.quote-tweet {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.quote-tweet__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.quote-tweet__title,
+.quote-tweet__link,
+.quote-tweet__text {
+  margin: 0;
+}
+
+.quote-tweet__title {
+  font-size: 0.96rem;
+}
+
+.quote-tweet__title a,
+.quote-tweet__link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.quote-tweet__title a:hover,
+.quote-tweet__link a:hover {
+  text-decoration: underline;
+}
+
+.quote-tweet__link {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.quote-tweet__text {
+  margin-top: 8px;
+  font-size: 0.96rem;
+  line-height: 1.45;
 }
 
 .tweet-card details {
@@ -295,7 +360,8 @@ button:disabled {
     flex-direction: column;
   }
 
-  .tweet-card__top {
+  .tweet-card__header,
+  .quote-tweet__header {
     flex-direction: column;
   }
 
