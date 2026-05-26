@@ -21,7 +21,7 @@
 
   XMLHttpRequest.prototype.send = function patchedSend() {
     this.addEventListener("loadend", () => {
-      if (!matchesTimelineUrl(this.__xBangerRescueUrl)) {
+      if (!matchesGraphqlUrl(this.__xBangerRescueUrl)) {
         return;
       }
 
@@ -36,7 +36,7 @@
   };
 
   async function tryCaptureResponse(url, response) {
-    if (!matchesTimelineUrl(url)) {
+    if (!matchesGraphqlUrl(url)) {
       return;
     }
 
@@ -80,14 +80,14 @@
     return "";
   }
 
-  function matchesTimelineUrl(url) {
+  function matchesGraphqlUrl(url) {
     if (typeof url !== "string" || !url) {
       return false;
     }
 
     try {
       const parsed = new URL(url, window.location.origin);
-      return parsed.hostname === "x.com" && /^\/i\/api\/graphql\/[^/]+\/HomeLatestTimeline(?:\/)?$/.test(parsed.pathname);
+      return parsed.hostname === "x.com" && /^\/i\/api\/graphql\/[^/]+\/[^/?/]+(?:\/)?$/.test(parsed.pathname);
     } catch (error) {
       return false;
     }

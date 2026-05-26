@@ -1,4 +1,4 @@
-const STORAGE_KEY = "capturedHomeLatestTimelinePayloads";
+const STORAGE_KEY = "capturedGraphqlTweetPayloads";
 const MAX_RECORDS = 10;
 
 chrome.action.onClicked.addListener(() => {
@@ -11,7 +11,7 @@ chrome.action.onClicked.addListener(() => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!message || message.type !== "capture-home-latest-timeline") {
+  if (!message || message.type !== "capture-graphql-payload") {
     return;
   }
 
@@ -44,7 +44,68 @@ async function appendCapture(record) {
 }
 
 function isValidRecord(record) {
-  return !!record && typeof record === "object" && record.payload && typeof record.payload === "object";
+  return !!record &&
+    typeof record === "object" &&
+    record.payload &&
+    typeof record.payload === "object" &&
+    containsTweetLikeData(record.payload);
+}
+
+function containsTweetLikeData(payload) {
+  const stack = [payload];
+  let inspected = 0;
+
+  while (stack.length > 0 && inspected < 8000) {
+    const value = stack.pop();
+    inspected += 1;
+
+    if (!value || typeof value !== "object") {
+      continue;
+    }
+
+    if (looksLikeTweet(value)) {
+      return true;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        stack.push(item);
+      }
+      continue;
+    }
+
+    for (const child of Object.values(value)) {
+      if (child && typeof child === "object") {
+        stack.push(child);
+      }
+    }
+  }
+
+  return false;
+}
+
+function looksLikeTweet(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (value.__typename === "Tweet" || value.__typename === "TimelineTweet") {
+    return true;
+  }
+
+  if (typeof value.rest_id === "string" && value.legacy && typeof value.legacy.full_text === "string") {
+    return true;
+  }
+
+  if (value.tweet_results && typeof value.tweet_results === "object") {
+    return true;
+  }
+
+  if (value.itemContent && value.itemContent.__typename === "TimelineTweet") {
+    return true;
+  }
+
+  return false;
 }
 
 function storageGet(key, fallbackValue) {

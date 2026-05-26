@@ -1,4 +1,4 @@
-const STORAGE_KEY = "capturedHomeLatestTimelinePayloads";
+const STORAGE_KEY = "capturedGraphqlTweetPayloads";
 
 const summaryEl = document.getElementById("summary");
 const tweetListEl = document.getElementById("tweetList");
@@ -59,7 +59,7 @@ async function render() {
   renderCaptureGroups(captureGroups);
 
   if (records.length === 0 || captureGroups.length === 0) {
-    summaryEl.textContent = "No matching timeline responses have been captured yet. Open x.com, let HomeLatestTimeline load, then click the extension again.";
+    summaryEl.textContent = "No tweet-like GraphQL responses have been captured yet. Open x.com, load a timeline or user tweet list, then click the extension again.";
     copyButton.disabled = true;
     return;
   }

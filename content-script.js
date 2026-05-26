@@ -9,7 +9,7 @@ document.addEventListener(EVENT_NAME, (event) => {
   }
 
   chrome.runtime.sendMessage({
-    type: "capture-home-latest-timeline",
+    type: "capture-graphql-payload",
     record: detail
   });
 });
