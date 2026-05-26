@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "X Banger Rescue",
   "version": "1.0.0",
-  "description": "Capture the latest ten X HomeLatestTimeline GraphQL responses and open a grouped rescue view.",
+  "description": "Captures recent X feed, so you can recover Tweets that disappeared",
   "permissions": [
     "storage"
   ],
