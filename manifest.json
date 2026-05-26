@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "X User Flow Capture",
+  "version": "1.0.0",
+  "description": "Capture the latest ten X user_flow JSON payloads and open a deduplicated composite view.",
+  "permissions": [
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://x.com/i/api/1.1/graphql/user_flow.json*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open captured X user_flow payloads"
+  }
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>X User Flow Composite</title>
+    <link rel="stylesheet" href="viewer.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">X user_flow capture</p>
+        <h1>Deduplicated composite</h1>
+        <p class="summary" id="summary">Loading captured payloads...</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h2>Composite JSON</h2>
+          <div class="panel__actions">
+            <button id="copyButton" type="button">Copy JSON</button>
+            <button id="clearButton" type="button" class="button--ghost">Clear saved</button>
+          </div>
+        </div>
+        <pre id="output" class="output"></pre>
+      </section>
+    </main>
+
+    <script src="viewer.js"></script>
+  </body>
+</html>
