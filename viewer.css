@@ -43,6 +43,21 @@ body {
   text-transform: uppercase;
 }
 
+.brandline {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.brandline a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.brandline a:hover {
+  text-decoration: underline;
+}
+
 .hero h1 {
   margin: 0;
   font-size: clamp(2.1rem, 4vw, 3.4rem);
@@ -63,6 +78,7 @@ body {
   box-shadow: var(--shadow);
   overflow: hidden;
   backdrop-filter: blur(10px);
+  margin-bottom: 18px;
 }
 
 .panel__header {
@@ -115,6 +131,128 @@ button:disabled {
   color: var(--accent);
 }
 
+.tweet-list {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.tweet-card,
+.empty-state {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 250, 242, 0.78);
+}
+
+.tweet-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.tweet-card__title {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.tweet-card__title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.tweet-card__title a:hover {
+  color: var(--accent);
+}
+
+.tweet-card__meta,
+.tweet-card__fallback,
+.empty-state {
+  color: var(--muted);
+}
+
+.tweet-card__meta,
+.tweet-card__fallback {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.tweet-card__text {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(28, 26, 24, 0.06);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.media-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.media-item {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.media-item__label {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.media-item a {
+  color: var(--accent);
+  word-break: break-word;
+}
+
+.media-preview {
+  display: block;
+  max-width: 100%;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+
+.tweet-card details {
+  margin-top: 10px;
+}
+
+.tweet-card summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.tweet-card pre {
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(28, 26, 24, 0.04);
+  overflow: auto;
+  font-size: 0.82rem;
+}
+
+.panel--raw .output {
+  min-height: 260px;
+}
+
 .output {
   margin: 0;
   padding: 20px;
@@ -143,6 +281,10 @@ button:disabled {
 
   .panel__actions {
     width: 100%;
+    flex-direction: column;
+  }
+
+  .tweet-card__top {
     flex-direction: column;
   }
 }

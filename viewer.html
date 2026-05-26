@@ -9,18 +9,31 @@
   <body>
     <main class="shell">
       <section class="hero">
-        <p class="eyebrow">X user_flow capture</p>
-        <h1>Deduplicated composite</h1>
+        <p class="eyebrow">Captured from x.com user_flow.json</p>
+        <p class="brandline">
+          <span>X Banger Rescue by </span>
+          <a href="https://x.com/johnloeber" target="_blank" rel="noreferrer">John Loeber</a>
+          <span> | </span>
+          <a href="https://github.com/Datamine/rescue-bangers" target="_blank" rel="noreferrer">Github</a>
+        </p>
+        <h1>Recovered tweets</h1>
         <p class="summary" id="summary">Loading captured payloads...</p>
       </section>
 
       <section class="panel">
         <div class="panel__header">
-          <h2>Composite JSON</h2>
+          <h2>Recovered tweet cards</h2>
           <div class="panel__actions">
             <button id="copyButton" type="button">Copy JSON</button>
             <button id="clearButton" type="button" class="button--ghost">Clear saved</button>
           </div>
+        </div>
+        <div id="tweetList" class="tweet-list"></div>
+      </section>
+
+      <section class="panel panel--raw">
+        <div class="panel__header">
+          <h2>Composite JSON</h2>
         </div>
         <pre id="output" class="output"></pre>
       </section>

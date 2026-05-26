@@ -16,8 +16,9 @@ It stores the latest ten successfully parsed JSON request bodies in `chrome.stor
 ## How it works
 
 - Capture happens in `background.js` using `chrome.webRequest.onBeforeRequest` plus the `requestBody` extra info spec.
+- The body parser prefers structured fields like `log=[...]` from form-encoded requests, which is where X commonly places the client event array.
 - The extension keeps only the latest ten captures.
-- The viewer merges all saved payloads, flattens top-level arrays, and deduplicates entries using a stable JSON serialization.
+- The viewer merges all saved payloads, flattens top-level arrays, deduplicates entries using a stable JSON serialization, and renders tweet-like items as cards before showing the raw composite JSON.
 
 ## Notes
 

@@ -1,6 +1,7 @@
 const STORAGE_KEY = "capturedUserFlowPayloads";
 const MAX_RECORDS = 10;
 const TARGET_URLS = ["https://x.com/i/api/1.1/graphql/user_flow.json*"];
+const PREFERRED_PAYLOAD_KEYS = ["log", "payload", "data", "events"];
 
 let writeQueue = Promise.resolve();
 
@@ -77,7 +78,7 @@ function extractRawPayload(rawParts) {
   }
 
   bodyText += decoder.decode();
-  return safeParseJson(bodyText);
+  return extractPayloadFromText(bodyText);
 }
 
 function extractFormPayload(formData) {
@@ -85,23 +86,30 @@ function extractFormPayload(formData) {
     return null;
   }
 
-  for (const values of Object.values(formData)) {
-    if (!Array.isArray(values)) {
+  const preferredMatches = [];
+  const fallbackMatches = [];
+
+  for (const [key, values] of Object.entries(formData)) {
+    if (!Array.isArray(values) || values.length === 0) {
       continue;
     }
 
     for (const value of values) {
-      const parsed = safeParseJson(value);
+      const parsed = extractPayloadFromText(value);
       if (parsed !== null) {
-        return parsed;
+        if (PREFERRED_PAYLOAD_KEYS.includes(key)) {
+          preferredMatches.push(parsed);
+        } else {
+          fallbackMatches.push(parsed);
+        }
       }
     }
   }
 
-  return null;
+  return preferredMatches[0] ?? fallbackMatches[0] ?? null;
 }
 
-function safeParseJson(value) {
+function extractPayloadFromText(value) {
   if (typeof value !== "string") {
     return null;
   }
@@ -111,10 +119,48 @@ function safeParseJson(value) {
     return null;
   }
 
+  const directJson = parseStructuredJson(trimmed);
+  if (directJson !== null) {
+    return directJson;
+  }
+
+  if (!trimmed.includes("=")) {
+    return null;
+  }
+
+  const params = new URLSearchParams(trimmed);
+  const preferredMatches = [];
+  const fallbackMatches = [];
+
+  for (const [key, paramValue] of params.entries()) {
+    const parsed = parseStructuredJson(paramValue);
+    if (parsed === null) {
+      continue;
+    }
+
+    if (PREFERRED_PAYLOAD_KEYS.includes(key)) {
+      preferredMatches.push(parsed);
+    } else {
+      fallbackMatches.push(parsed);
+    }
+  }
+
+  return preferredMatches[0] ?? fallbackMatches[0] ?? null;
+}
+
+function parseStructuredJson(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
   try {
-    return JSON.parse(trimmed);
+    const parsed = JSON.parse(value);
+    if (parsed === null || typeof parsed !== "object") {
+      return null;
+    }
+
+    return parsed;
   } catch (error) {
-    console.warn("Ignoring non-JSON request body", error);
     return null;
   }
 }
