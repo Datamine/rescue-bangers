@@ -10,6 +10,11 @@ This means that if you ever see a great tweet and your feed refreshes too quickl
 
 To the Twitter team: please make this a native feature on Twitter. There is no browser extension solution possible for mobile. (At least not on iPhone.)
 
+## Install
+
+- Version: 1.0.0
+- Chrome Web Store Link
+
 ## Dependencies/Security
 
 This Chrome Extension uses only vanilla JavaScript and has no third-party dependencies. Not a single package or import.
