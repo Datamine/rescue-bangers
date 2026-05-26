@@ -66,7 +66,7 @@ async function render() {
 
   const newestRecord = records[records.length - 1];
   const newestLabel = formatTimestamp(newestRecord.capturedAt);
-  summaryEl.textContent = `Showing ${recoveredCount} recovered tweet cards across ${captureGroups.length} captured requests, ordered from oldest to newest. Latest capture: ${newestLabel}.`;
+  summaryEl.textContent = `Showing ${recoveredCount} recovered tweet cards across ${captureGroups.length} captured requests, ordered from newest to oldest. Latest capture: ${newestLabel}.`;
   copyButton.disabled = false;
 }
 
@@ -92,13 +92,26 @@ function buildComposite(records) {
 }
 
 function buildCaptureGroups(records) {
+  const seenTweetIds = new Set();
+
   return records
     .slice()
-    .sort((left, right) => (left.capturedAt || 0) - (right.capturedAt || 0))
+    .sort((left, right) => (right.capturedAt || 0) - (left.capturedAt || 0))
     .map((record, index) => ({
       id: index + 1,
       capturedAt: record.capturedAt,
       tweets: buildRecoveredTweets(extractTimelineTweets(record.payload))
+    }))
+    .map((group) => ({
+      ...group,
+      tweets: group.tweets.filter((tweet) => {
+        if (seenTweetIds.has(tweet.id)) {
+          return false;
+        }
+
+        seenTweetIds.add(tweet.id);
+        return true;
+      })
     }))
     .filter((group) => group.tweets.length > 0);
 }
