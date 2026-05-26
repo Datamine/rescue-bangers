@@ -13,10 +13,10 @@
     "service_worker": "background.js"
   },
   "icons": {
-    "16": "logo_16px.png",
-    "32": "logo_32px.png",
-    "48": "logo_48px.png",
-    "128": "logo_128px.png"
+    "16": "icons/logo_16px.png",
+    "32": "icons/logo_32px.png",
+    "48": "icons/logo_48px.png",
+    "128": "icons/logo_128px.png"
   },
   "content_scripts": [
     {
@@ -42,9 +42,9 @@
   "action": {
     "default_title": "Open X Banger Rescue",
     "default_icon": {
-      "16": "logo_16px.png",
-      "32": "logo_32px.png",
-      "48": "logo_48px.png"
+      "16": "icons/logo_16px.png",
+      "32": "icons/logo_32px.png",
+      "48": "icons/logo_48px.png"
     }
   }
 }

@@ -2,7 +2,7 @@
 
 Do you sometimes see a great post on Twitter, but for whatever reason, your feed refreshes before you finish reading it or click on it?
 
-X Banger Rescue, developed by [x.com/johnloeber](John Loeber), is here to save the day.
+X Banger Rescue, developed by [John Loeber](https://x.com/johnloeber), is here to save the day.
 
 **This is a Chrome Extension that will capture your ten latest feed refreshes.** You can click on the extension at any time to view the dataset and interact with the tweets.
 
