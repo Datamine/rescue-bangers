@@ -255,9 +255,6 @@ function buildTweetCard(tweet) {
   const article = document.createElement("article");
   article.className = "tweet-card";
 
-  const top = document.createElement("div");
-  top.className = "tweet-card__top";
-
   const titleWrap = document.createElement("div");
   const title = document.createElement("h3");
   title.className = "tweet-card__title";
@@ -269,13 +266,12 @@ function buildTweetCard(tweet) {
   title.append(link);
   titleWrap.append(title);
 
-  const meta = document.createElement("p");
-  meta.className = "tweet-card__meta";
-  meta.textContent = buildMetaLine(tweet);
-  titleWrap.append(meta);
-  top.append(titleWrap);
+  const authorLink = buildAuthorLink(tweet);
+  if (authorLink) {
+    titleWrap.append(authorLink);
+  }
 
-  article.append(top);
+  article.append(titleWrap);
 
   if (tweet.text) {
     const text = document.createElement("p");
@@ -289,41 +285,6 @@ function buildTweetCard(tweet) {
     article.append(fallback);
   }
 
-  const chipRow = document.createElement("div");
-  chipRow.className = "chip-row";
-  if (tweet.authorHandles.length > 0) {
-    addChip(chipRow, `@${tweet.authorHandles[0]}`);
-  } else {
-    addChip(chipRow, `author ${tweet.authorIds[0] ?? "unknown"}`);
-  }
-  for (const context of tweet.contexts.slice(0, 3)) {
-    addChip(chipRow, context);
-  }
-  for (const suggestionType of tweet.suggestionTypes.slice(0, 2)) {
-    addChip(chipRow, suggestionType);
-  }
-  if (tweet.latestTriggeredOn) {
-    addChip(chipRow, formatTimestamp(tweet.latestTriggeredOn));
-  }
-  if (tweet.quoteIds.length > 0) {
-    addChip(chipRow, `quotes ${tweet.quoteIds[0]}`);
-  }
-  if (tweet.retweetIds.length > 0) {
-    addChip(chipRow, `retweet ${tweet.retweetIds[0]}`);
-  }
-  if (chipRow.childNodes.length > 0) {
-    article.append(chipRow);
-  }
-
-  if (tweet.metrics) {
-    const metricsRow = document.createElement("div");
-    metricsRow.className = "chip-row";
-    for (const label of formatMetrics(tweet.metrics)) {
-      addChip(metricsRow, label);
-    }
-    article.append(metricsRow);
-  }
-
   if (tweet.media.length > 0) {
     const mediaList = document.createElement("div");
     mediaList.className = "media-list";
@@ -335,17 +296,26 @@ function buildTweetCard(tweet) {
     article.append(mediaList);
   }
 
-  const details = document.createElement("details");
-  const summary = document.createElement("summary");
-  summary.textContent = "Merged item metadata";
-  details.append(summary);
-
-  const metadata = document.createElement("pre");
-  metadata.textContent = JSON.stringify(tweet.rawPreview, null, 2);
-  details.append(metadata);
-  article.append(details);
-
   return article;
+}
+
+function buildAuthorLink(tweet) {
+  const handle = tweet.authorHandles.length > 0 ? tweet.authorHandles[0] : "";
+  if (!handle) {
+    return null;
+  }
+
+  const meta = document.createElement("p");
+  meta.className = "tweet-card__meta";
+
+  const link = document.createElement("a");
+  link.href = `https://x.com/${handle}`;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = `@${handle}`;
+  meta.append(link);
+
+  return meta;
 }
 
 function buildMediaBlock(mediaEntry) {
@@ -373,35 +343,6 @@ function buildMediaBlock(mediaEntry) {
   }
 
   return wrapper;
-}
-
-function buildMetaLine(tweet) {
-  const parts = [];
-
-  if (tweet.authorHandles.length > 0) {
-    parts.push(`@${tweet.authorHandles.join(", @")}`);
-  } else if (tweet.authorNames.length > 0) {
-    parts.push(tweet.authorNames.join(", "));
-  } else if (tweet.authorIds.length > 0) {
-    parts.push(`author ${tweet.authorIds.join(", ")}`);
-  }
-
-  if (tweet.contexts.length > 0) {
-    parts.push(tweet.contexts.slice(0, 2).join(" | "));
-  }
-
-  if (tweet.suggestionTypes.length > 0) {
-    parts.push(tweet.suggestionTypes.join(", "));
-  }
-
-  return parts.join(" • ");
-}
-
-function addChip(container, label) {
-  const chip = document.createElement("span");
-  chip.className = "chip";
-  chip.textContent = label;
-  container.append(chip);
 }
 
 function getTweetId(item) {
@@ -432,20 +373,6 @@ function chooseMetrics(existingMetrics, nextMetrics) {
   const existingViews = Number(existingMetrics.view_count) || 0;
   const nextViews = Number(nextMetrics.view_count) || 0;
   return nextViews >= existingViews ? nextMetrics : existingMetrics;
-}
-
-function formatMetrics(metrics) {
-  const metricPairs = [
-    ["replies", metrics.reply_count],
-    ["retweets", metrics.retweet_count],
-    ["likes", metrics.favorite_count],
-    ["quotes", metrics.quote_count],
-    ["views", metrics.view_count]
-  ];
-
-  return metricPairs
-    .filter(([, value]) => value !== undefined && value !== null)
-    .map(([label, value]) => `${label} ${value}`);
 }
 
 function compareTweets(left, right) {
