@@ -122,6 +122,8 @@ function buildRecoveredTweets(entries) {
       tweet = {
         id: tweetId,
         url: buildTweetUrl(entry),
+        threadDepth: Number.POSITIVE_INFINITY,
+        isThreadChild: false,
         profileImageUrl: "",
         authorIds: new Set(),
         authorHandles: new Set(),
@@ -173,6 +175,14 @@ function buildRecoveredTweets(entries) {
 
     if (Number.isFinite(entry.position)) {
       tweet.position = Math.min(tweet.position, entry.position);
+    }
+
+    if (Number.isFinite(entry.threadDepth)) {
+      tweet.threadDepth = Math.min(tweet.threadDepth, entry.threadDepth);
+    }
+
+    if (entry.threadDepth > 0) {
+      tweet.isThreadChild = true;
     }
 
     if (entry.quotedTweetId) {
@@ -264,6 +274,9 @@ function renderCaptureGroups(captureGroups) {
 function buildTweetCard(tweet) {
   const article = document.createElement("article");
   article.className = "tweet-card";
+  if (tweet.isThreadChild) {
+    article.classList.add("tweet-card--thread-child");
+  }
 
   const header = document.createElement("div");
   header.className = "tweet-card__header";
@@ -583,6 +596,7 @@ function extractTweetsFromEntry(entry, startOrderIndex) {
   if (content && content.entryType === "TimelineTimelineItem") {
     const tweet = extractTweetFromItemContent(content.itemContent, {
       orderIndex: startOrderIndex,
+      threadDepth: 0,
       entryId: entry.entryId,
       sortIndex: entry.sortIndex,
       context: content.clientEventInfo && content.clientEventInfo.component
@@ -596,9 +610,11 @@ function extractTweetsFromEntry(entry, startOrderIndex) {
 
   if (content && content.entryType === "TimelineTimelineModule" && Array.isArray(content.items)) {
     let moduleOrder = startOrderIndex;
+    const isConversation = content.displayType === "VerticalConversation" || String(entry.entryId || "").startsWith("conversationthread-");
     for (const moduleItem of content.items) {
       const tweet = extractTweetFromItemContent(moduleItem && moduleItem.item && moduleItem.item.itemContent, {
         orderIndex: moduleOrder++,
+        threadDepth: isConversation ? inferThreadDepth(moduleItem, results.length) : 0,
         entryId: moduleItem && moduleItem.entryId,
         sortIndex: entry.sortIndex,
         context: content.displayType || content.entryType
@@ -631,6 +647,7 @@ function extractTweetFromItemContent(itemContent, options) {
   return {
     id: tweetResult.rest_id || legacy.id_str || "",
     position: Number.isFinite(options && options.orderIndex) ? options.orderIndex : Number.POSITIVE_INFINITY,
+    threadDepth: Number.isFinite(options && options.threadDepth) ? options.threadDepth : 0,
     sortIndex: typeof options.sortIndex === "string" ? options.sortIndex : "",
     context: options && options.context ? String(options.context) : "",
     suggestionType: itemContent.tweetDisplayType || itemContent.itemType || "",
@@ -769,6 +786,19 @@ function collectMediaEntries(tweetResult) {
   }
 
   return media;
+}
+
+function inferThreadDepth(moduleItem, siblingIndex) {
+  if (siblingIndex <= 0) {
+    return 0;
+  }
+
+  const entryId = moduleItem && typeof moduleItem.entryId === "string" ? moduleItem.entryId : "";
+  if (entryId.includes("conversationthread-")) {
+    return 1;
+  }
+
+  return 1;
 }
 
 function extractQuotedTweet(tweetResult) {

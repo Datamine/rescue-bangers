@@ -166,6 +166,23 @@ button:disabled {
   background: rgba(255, 250, 242, 0.78);
 }
 
+.tweet-card--thread-child {
+  position: relative;
+  margin-left: 28px;
+  background: rgba(255, 247, 238, 0.88);
+}
+
+.tweet-card--thread-child::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(191, 77, 40, 0.3), rgba(191, 77, 40, 0.08));
+}
+
 .tweet-card__header {
   display: flex;
   align-items: flex-start;
@@ -363,6 +380,14 @@ button:disabled {
   .tweet-card__header,
   .quote-tweet__header {
     flex-direction: column;
+  }
+
+  .tweet-card--thread-child {
+    margin-left: 14px;
+  }
+
+  .tweet-card--thread-child::before {
+    left: -10px;
   }
 
   .capture-group__header {
