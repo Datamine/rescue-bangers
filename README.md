@@ -69,5 +69,9 @@ Does this suck a little? Yes. But is it good enough? Also yes.
 - Doesn't handle translations
 - Doesn't strip the "RT @..." for retweets
 
+## Contributions
+
+Want to help out? Feel free to file issues if you run into bugs, or PRs if you have any ideas for improving the application. I do not receive GitHub notifications, so send an email to contact@johnloeber.com if there's something I should look at.
+
 ## Keywords
 X, Twitter, Post, Tweet, Refresh, Timeline, Feed, Recover
