@@ -244,6 +244,7 @@ button:disabled {
   margin: 0 0 12px;
   font-size: 1rem;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .chip-row {
@@ -348,6 +349,7 @@ button:disabled {
   margin-top: 8px;
   font-size: 0.96rem;
   line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .tweet-card details {

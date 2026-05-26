@@ -729,12 +729,25 @@ function extractBestTweetText(tweetResult) {
 
   let best = "";
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim().length > best.length) {
-      best = candidate.trim();
+    if (typeof candidate === "string") {
+      const normalized = decodeHtmlEntities(candidate).trim();
+      if (normalized.length > best.length) {
+        best = normalized;
+      }
     }
   }
 
   return best;
+}
+
+function decodeHtmlEntities(value) {
+  if (typeof value !== "string" || !value.includes("&")) {
+    return typeof value === "string" ? value : "";
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = value;
+  return textarea.value;
 }
 
 function collectAuthorIds(tweetResult, user, userLegacy) {
