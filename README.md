@@ -4,15 +4,17 @@ Do you sometimes see a great post on Twitter, but for whatever reason, your feed
 
 X Banger Rescue, developed by [x.com/johnloeber](John Loeber), is here to save the day.
 
-This is a Chrome Extension that will capture your ten latest feed refreshes. You can click on the extension at any time to view the dataset and interact with the tweets.
+**This is a Chrome Extension that will capture your ten latest feed refreshes.** You can click on the extension at any time to view the dataset and interact with the tweets.
 
 This means that if you ever see a great tweet and your feed refreshes too quickly, you can just open up the extension and find it.
 
 To the Twitter team: please make this a native feature on Twitter. There is no browser extension solution possible for mobile. (At least not on iPhone.)
 
-## Dependencies
+## Dependencies/Security
 
 This Chrome Extension uses only vanilla JavaScript and has no third-party dependencies. Not a single package or import.
+
+This extension itself does not send any of your data anywhere. It's possible that your extension's data is synced with your Google Chrome Browser profile, but that's something you would've had to enable.
 
 ## Developer Overview
 
