@@ -1,10 +1,12 @@
-# X User Flow Capture
+# X Banger Rescue
 
-This Chrome extension captures outgoing `POST` requests to:
+This Chrome extension captures `HomeLatestTimeline` GraphQL responses from X and stores the latest ten JSON payloads in `chrome.storage.local`.
 
-`https://x.com/i/api/1.1/graphql/user_flow.json`
+It matches response URLs like:
 
-It stores the latest ten successfully parsed JSON request bodies in `chrome.storage.local`. Clicking the extension opens a separate HTML window that shows a deduplicated composite of all top-level objects from those saved payloads.
+`https://x.com/i/api/graphql/<variable>/HomeLatestTimeline?...`
+
+Clicking the extension opens a separate HTML window that groups recovered tweet cards by capture time.
 
 ## Load it in Chrome
 
@@ -15,12 +17,13 @@ It stores the latest ten successfully parsed JSON request bodies in `chrome.stor
 
 ## How it works
 
-- Capture happens in `background.js` using `chrome.webRequest.onBeforeRequest` plus the `requestBody` extra info spec.
-- The body parser prefers structured fields like `log=[...]` from form-encoded requests, which is where X commonly places the client event array.
+- `content-script.js` injects `page-hook.js` into `x.com` pages at document start.
+- `page-hook.js` patches `fetch` and `XMLHttpRequest` in the page context so it can read matching JSON response bodies for `.../graphql/<hash>/HomeLatestTimeline`.
+- Captured payloads are forwarded to `background.js`, which keeps only the latest ten.
 - The extension keeps only the latest ten captures.
-- The viewer merges all saved payloads, flattens top-level arrays, deduplicates entries using a stable JSON serialization, and renders tweet-like items as cards before showing the raw composite JSON.
+- The viewer extracts tweets from timeline entries and conversation modules, then groups them by when the response was captured.
 
 ## Notes
 
-- Chrome extensions can match the request by URL and method, but not by directly reading HTTP/2 pseudo-headers like `:authority` or `:path`. In practice, the filter here is equivalent to `POST https://x.com/i/api/1.1/graphql/user_flow.json`.
-- If the request body is not valid JSON, the extension ignores it.
+- The `<variable>` path segment between `graphql/` and `HomeLatestTimeline` is treated as dynamic and is not hard-coded.
+- This implementation captures responses, not requests.

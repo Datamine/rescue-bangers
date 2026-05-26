@@ -34,17 +34,8 @@ body {
   margin-bottom: 20px;
 }
 
-.eyebrow {
-  margin: 0 0 8px;
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
 .brandline {
-  margin: 0 0 12px;
+  margin: 10px 0 12px;
   color: var(--muted);
   font-size: 1rem;
 }
@@ -133,6 +124,36 @@ button:disabled {
 
 .tweet-list {
   padding: 20px;
+  display: grid;
+  gap: 22px;
+}
+
+.capture-group {
+  display: grid;
+  gap: 14px;
+}
+
+.capture-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.capture-group__title {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.capture-group__meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.capture-group__cards {
   display: grid;
   gap: 16px;
 }
@@ -249,25 +270,6 @@ button:disabled {
   font-size: 0.82rem;
 }
 
-.panel--raw .output {
-  min-height: 260px;
-}
-
-.output {
-  margin: 0;
-  padding: 20px;
-  min-height: 420px;
-  max-height: calc(100vh - 230px);
-  overflow: auto;
-  background: rgba(255, 253, 249, 0.72);
-  color: #292420;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 @media (max-width: 700px) {
   .shell {
     width: min(100%, calc(100% - 20px));
@@ -286,5 +288,10 @@ button:disabled {
 
   .tweet-card__top {
     flex-direction: column;
+  }
+
+  .capture-group__header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

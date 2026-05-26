@@ -1,7 +1,6 @@
-const STORAGE_KEY = "capturedUserFlowPayloads";
+const STORAGE_KEY = "capturedHomeLatestTimelinePayloads";
 
 const summaryEl = document.getElementById("summary");
-const outputEl = document.getElementById("output");
 const tweetListEl = document.getElementById("tweetList");
 const copyButton = document.getElementById("copyButton");
 const clearButton = document.getElementById("clearButton");
@@ -25,6 +24,10 @@ copyButton.addEventListener("click", async () => {
 });
 
 clearButton.addEventListener("click", async () => {
+  if (!window.confirm("Clear all saved captured payloads?")) {
+    return;
+  }
+
   clearButton.disabled = true;
 
   try {
@@ -49,21 +52,21 @@ async function render() {
   const result = await storageGet(STORAGE_KEY, []);
   const records = Array.isArray(result[STORAGE_KEY]) ? result[STORAGE_KEY] : [];
   const composite = buildComposite(records);
-  const tweets = buildRecoveredTweets(composite);
+  const captureGroups = buildCaptureGroups(records);
+  const recoveredCount = captureGroups.reduce((count, group) => count + group.tweets.length, 0);
 
   latestCompositeJson = JSON.stringify(composite, null, 2);
-  outputEl.textContent = latestCompositeJson;
-  renderTweetCards(tweets);
+  renderCaptureGroups(captureGroups);
 
-  if (records.length === 0) {
-    summaryEl.textContent = "No matching POST bodies have been captured yet. Open x.com, trigger user_flow traffic, then click the extension again.";
+  if (records.length === 0 || captureGroups.length === 0) {
+    summaryEl.textContent = "No matching timeline responses have been captured yet. Open x.com, let HomeLatestTimeline load, then click the extension again.";
     copyButton.disabled = true;
     return;
   }
 
   const newestRecord = records[records.length - 1];
   const newestLabel = formatTimestamp(newestRecord.capturedAt);
-  summaryEl.textContent = `Recovered ${tweets.length} unique tweets from ${composite.length} unique user_flow events merged from the latest ${records.length} captures. Last capture: ${newestLabel}.`;
+  summaryEl.textContent = `Showing ${recoveredCount} recovered tweet cards across ${captureGroups.length} captured requests, ordered from oldest to newest. Latest capture: ${newestLabel}.`;
   copyButton.disabled = false;
 }
 
@@ -72,8 +75,7 @@ function buildComposite(records) {
   const seen = new Set();
 
   for (const record of records) {
-    const payload = record ? record.payload : null;
-    const entries = Array.isArray(payload) ? payload : payload === null || payload === undefined ? [] : [payload];
+    const entries = extractTimelineTweets(record ? record.payload : null);
 
     for (const entry of entries) {
       const key = stableStringify(entry);
@@ -89,93 +91,108 @@ function buildComposite(records) {
   return uniqueEntries;
 }
 
+function buildCaptureGroups(records) {
+  return records
+    .slice()
+    .sort((left, right) => (left.capturedAt || 0) - (right.capturedAt || 0))
+    .map((record, index) => ({
+      id: index + 1,
+      capturedAt: record.capturedAt,
+      tweets: buildRecoveredTweets(extractTimelineTweets(record.payload))
+    }))
+    .filter((group) => group.tweets.length > 0);
+}
+
 function buildRecoveredTweets(entries) {
   const tweetsById = new Map();
+  let fallbackOrder = 0;
 
-  for (const event of entries) {
-    if (!event || typeof event !== "object") {
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") {
       continue;
     }
 
-    const items = Array.isArray(event.items) ? event.items : [];
-    const namespaceLabel = formatNamespace(event.event_namespace);
-    const eventTimestamp = Number(event.triggered_on) || 0;
+    const tweetId = getTweetId(entry);
+    if (!tweetId) {
+      continue;
+    }
 
-    for (const item of items) {
-      const tweetId = getTweetId(item);
-      if (!tweetId) {
+    let tweet = tweetsById.get(tweetId);
+    if (!tweet) {
+      tweet = {
+        id: tweetId,
+        url: buildTweetUrl(entry),
+        authorIds: new Set(),
+        authorHandles: new Set(),
+        authorNames: new Set(),
+        contexts: new Set(),
+        suggestionTypes: new Set(),
+        media: [],
+        mediaKeys: new Set(),
+        metrics: null,
+        text: "",
+        latestTriggeredOn: 0,
+        position: Number.POSITIVE_INFINITY,
+        fallbackOrder: fallbackOrder++,
+        quoteIds: new Set(),
+        retweetIds: new Set(),
+        rawPreview: null
+      };
+      tweetsById.set(tweetId, tweet);
+    }
+
+    for (const authorId of entry.authorIds) {
+      tweet.authorIds.add(authorId);
+    }
+
+    if (entry.authorHandle) {
+      tweet.authorHandles.add(entry.authorHandle);
+    }
+
+    if (entry.authorName) {
+      tweet.authorNames.add(entry.authorName);
+    }
+
+    if (entry.context) {
+      tweet.contexts.add(entry.context);
+    }
+
+    if (entry.suggestionType) {
+      tweet.suggestionTypes.add(entry.suggestionType);
+    }
+
+    if (entry.createdAtMs > tweet.latestTriggeredOn) {
+      tweet.latestTriggeredOn = entry.createdAtMs;
+    }
+
+    if (Number.isFinite(entry.position)) {
+      tweet.position = Math.min(tweet.position, entry.position);
+    }
+
+    if (entry.quotedTweetId) {
+      tweet.quoteIds.add(entry.quotedTweetId);
+    }
+
+    if (entry.retweetedTweetId) {
+      tweet.retweetIds.add(entry.retweetedTweetId);
+    }
+
+    if (entry.text.length > tweet.text.length) {
+      tweet.text = entry.text;
+    }
+
+    for (const mediaEntry of entry.media) {
+      if (tweet.mediaKeys.has(mediaEntry.key)) {
         continue;
       }
 
-      let tweet = tweetsById.get(tweetId);
-      if (!tweet) {
-        tweet = {
-          id: tweetId,
-          url: `https://x.com/i/status/${tweetId}`,
-          authorIds: new Set(),
-          contexts: new Set(),
-          suggestionTypes: new Set(),
-          media: [],
-          mediaKeys: new Set(),
-          metrics: null,
-          text: "",
-          latestTriggeredOn: 0,
-          sortIndex: "",
-          quoteIds: new Set(),
-          retweetIds: new Set(),
-          rawPreview: null
-        };
-        tweetsById.set(tweetId, tweet);
-      }
+      tweet.mediaKeys.add(mediaEntry.key);
+      tweet.media.push(mediaEntry);
+    }
 
-      if (item.author_id) {
-        tweet.authorIds.add(String(item.author_id));
-      }
-
-      if (namespaceLabel) {
-        tweet.contexts.add(namespaceLabel);
-      }
-
-      const suggestionType = item.suggestion_details && item.suggestion_details.suggestion_type;
-      if (typeof suggestionType === "string" && suggestionType) {
-        tweet.suggestionTypes.add(suggestionType);
-      }
-
-      if (eventTimestamp > tweet.latestTriggeredOn) {
-        tweet.latestTriggeredOn = eventTimestamp;
-      }
-
-      if (typeof item.sort_index === "string" && item.sort_index > tweet.sortIndex) {
-        tweet.sortIndex = item.sort_index;
-      }
-
-      if (item.quoted_tweet_id) {
-        tweet.quoteIds.add(String(item.quoted_tweet_id));
-      }
-
-      if (item.retweeting_tweet_id) {
-        tweet.retweetIds.add(String(item.retweeting_tweet_id));
-      }
-
-      const itemText = extractTweetText(item, event);
-      if (itemText.length > tweet.text.length) {
-        tweet.text = itemText;
-      }
-
-      const mediaEntries = collectMediaEntries(item);
-      for (const mediaEntry of mediaEntries) {
-        if (tweet.mediaKeys.has(mediaEntry.key)) {
-          continue;
-        }
-
-        tweet.mediaKeys.add(mediaEntry.key);
-        tweet.media.push(mediaEntry);
-      }
-
-      tweet.metrics = chooseMetrics(tweet.metrics, item.engagement_metrics);
-      if (!tweet.rawPreview) {
-        tweet.rawPreview = item;
-      }
+    tweet.metrics = chooseMetrics(tweet.metrics, entry.metrics);
+    if (!tweet.rawPreview) {
+      tweet.rawPreview = entry.raw;
     }
   }
 
@@ -184,6 +201,8 @@ function buildRecoveredTweets(entries) {
     .map((tweet) => ({
       ...tweet,
       authorIds: Array.from(tweet.authorIds),
+      authorHandles: Array.from(tweet.authorHandles),
+      authorNames: Array.from(tweet.authorNames),
       contexts: Array.from(tweet.contexts),
       suggestionTypes: Array.from(tweet.suggestionTypes),
       quoteIds: Array.from(tweet.quoteIds),
@@ -191,19 +210,44 @@ function buildRecoveredTweets(entries) {
     }));
 }
 
-function renderTweetCards(tweets) {
+function renderCaptureGroups(captureGroups) {
   tweetListEl.replaceChildren();
 
-  if (tweets.length === 0) {
+  if (captureGroups.length === 0) {
     const emptyState = document.createElement("div");
     emptyState.className = "empty-state";
-    emptyState.textContent = "No tweet-like items were found in the saved payloads yet. Once `log=[...]` request bodies are captured, tweet cards will appear here.";
+    emptyState.textContent = "No tweet-like items were found in the saved timeline responses yet. Once HomeLatestTimeline responses are captured, tweet cards will appear here.";
     tweetListEl.append(emptyState);
     return;
   }
 
-  for (const tweet of tweets) {
-    tweetListEl.append(buildTweetCard(tweet));
+  for (const group of captureGroups) {
+    const section = document.createElement("section");
+    section.className = "capture-group";
+
+    const header = document.createElement("div");
+    header.className = "capture-group__header";
+
+    const title = document.createElement("h3");
+    title.className = "capture-group__title";
+    title.textContent = formatTimestamp(group.capturedAt);
+    header.append(title);
+
+    const meta = document.createElement("p");
+    meta.className = "capture-group__meta";
+    meta.textContent = `${group.tweets.length} recovered ${group.tweets.length === 1 ? "tweet" : "tweets"}`;
+    header.append(meta);
+
+    section.append(header);
+
+    const cards = document.createElement("div");
+    cards.className = "capture-group__cards";
+    for (const tweet of group.tweets) {
+      cards.append(buildTweetCard(tweet));
+    }
+
+    section.append(cards);
+    tweetListEl.append(section);
   }
 }
 
@@ -231,14 +275,6 @@ function buildTweetCard(tweet) {
   titleWrap.append(meta);
   top.append(titleWrap);
 
-  const openButton = document.createElement("a");
-  openButton.href = tweet.url;
-  openButton.target = "_blank";
-  openButton.rel = "noreferrer";
-  openButton.textContent = "Open on X";
-  openButton.className = "chip";
-  top.append(openButton);
-
   article.append(top);
 
   if (tweet.text) {
@@ -249,13 +285,17 @@ function buildTweetCard(tweet) {
   } else {
     const fallback = document.createElement("p");
     fallback.className = "tweet-card__fallback";
-    fallback.textContent = "No tweet text was present in the captured user_flow payload for this item.";
+    fallback.textContent = "No tweet text was present in the captured timeline response for this item.";
     article.append(fallback);
   }
 
   const chipRow = document.createElement("div");
   chipRow.className = "chip-row";
-  addChip(chipRow, `author ${tweet.authorIds[0] ?? "unknown"}`);
+  if (tweet.authorHandles.length > 0) {
+    addChip(chipRow, `@${tweet.authorHandles[0]}`);
+  } else {
+    addChip(chipRow, `author ${tweet.authorIds[0] ?? "unknown"}`);
+  }
   for (const context of tweet.contexts.slice(0, 3)) {
     addChip(chipRow, context);
   }
@@ -338,7 +378,11 @@ function buildMediaBlock(mediaEntry) {
 function buildMetaLine(tweet) {
   const parts = [];
 
-  if (tweet.authorIds.length > 0) {
+  if (tweet.authorHandles.length > 0) {
+    parts.push(`@${tweet.authorHandles.join(", @")}`);
+  } else if (tweet.authorNames.length > 0) {
+    parts.push(tweet.authorNames.join(", "));
+  } else if (tweet.authorIds.length > 0) {
     parts.push(`author ${tweet.authorIds.join(", ")}`);
   }
 
@@ -365,87 +409,15 @@ function getTweetId(item) {
     return null;
   }
 
-  if (item.item_type !== 0) {
-    return null;
-  }
-
   if (typeof item.id === "string" && item.id) {
     return item.id;
   }
 
+  if (typeof item.rest_id === "string" && item.rest_id) {
+    return item.rest_id;
+  }
+
   return null;
-}
-
-function formatNamespace(namespace) {
-  if (!namespace || typeof namespace !== "object") {
-    return "";
-  }
-
-  const parts = [namespace.page, namespace.section, namespace.component, namespace.action]
-    .filter((value) => typeof value === "string" && value);
-
-  return parts.join(" / ");
-}
-
-function extractTweetText(item, event) {
-  const candidates = [
-    item.full_text,
-    item.text,
-    item.note_tweet_text,
-    item.legacy && item.legacy.full_text,
-    item.tweet_results && item.tweet_results.result && item.tweet_results.result.legacy && item.tweet_results.result.legacy.full_text,
-    item.note_tweet_results && item.note_tweet_results.result && item.note_tweet_results.result.text,
-    item.note_tweet_results && item.note_tweet_results.result && item.note_tweet_results.result.note_tweet && item.note_tweet_results.result.note_tweet.text,
-    event && event.full_text,
-    event && event.text
-  ];
-
-  let best = "";
-  for (const candidate of candidates) {
-    if (typeof candidate === "string") {
-      const trimmed = candidate.trim();
-      if (trimmed.length > best.length) {
-        best = trimmed;
-      }
-    }
-  }
-
-  return best;
-}
-
-function collectMediaEntries(item) {
-  const media = [];
-  const seen = new Set();
-
-  const addMedia = (url, label) => {
-    if (typeof url !== "string" || !url.startsWith("http")) {
-      return;
-    }
-
-    const key = `${label}|${url}`;
-    if (seen.has(key)) {
-      return;
-    }
-
-    seen.add(key);
-    media.push({ key, label, url });
-  };
-
-  addMedia(item.media_asset_url, "media asset");
-
-  for (const mediaDetail of toArray(item.media_details_v2)) {
-    addMedia(mediaDetail.media_url_https, "media");
-    addMedia(mediaDetail.media_url, "media");
-    addMedia(mediaDetail.url, "media");
-  }
-
-  for (const mediaDetail of toArray(item.media_details)) {
-    addMedia(mediaDetail.media_url_https, "media");
-    addMedia(mediaDetail.media_url, "media");
-    addMedia(mediaDetail.url, "media");
-  }
-
-  return media;
 }
 
 function chooseMetrics(existingMetrics, nextMetrics) {
@@ -477,11 +449,23 @@ function formatMetrics(metrics) {
 }
 
 function compareTweets(left, right) {
-  if (left.sortIndex && right.sortIndex && left.sortIndex !== right.sortIndex) {
-    return right.sortIndex.localeCompare(left.sortIndex);
+  if (left.position !== right.position) {
+    if (!Number.isFinite(left.position)) {
+      return 1;
+    }
+
+    if (!Number.isFinite(right.position)) {
+      return -1;
+    }
+
+    return left.position - right.position;
   }
 
-  return right.latestTriggeredOn - left.latestTriggeredOn;
+  if (left.latestTriggeredOn !== right.latestTriggeredOn) {
+    return left.latestTriggeredOn - right.latestTriggeredOn;
+  }
+
+  return left.fallbackOrder - right.fallbackOrder;
 }
 
 function looksLikePreviewableImage(url) {
@@ -490,6 +474,272 @@ function looksLikePreviewableImage(url) {
 
 function toArray(value) {
   return Array.isArray(value) ? value : value ? [value] : [];
+}
+
+function extractTimelineTweets(payload) {
+  const instructions = extractInstructionLists(payload);
+  const tweets = [];
+  let orderIndex = 0;
+
+  for (const instructionList of instructions) {
+    for (const instruction of instructionList) {
+      if (!instruction || typeof instruction !== "object" || !Array.isArray(instruction.entries)) {
+        continue;
+      }
+
+      for (const entry of instruction.entries) {
+        const extracted = extractTweetsFromEntry(entry, orderIndex);
+        orderIndex += extracted.length;
+        tweets.push(...extracted);
+      }
+    }
+  }
+
+  return tweets;
+}
+
+function extractInstructionLists(payload) {
+  const root = payload && payload.data && typeof payload.data === "object" ? payload.data : null;
+  if (!root) {
+    return [];
+  }
+
+  const results = [];
+  const visited = new Set();
+
+  walk(root);
+  return results;
+
+  function walk(value) {
+    if (!value || typeof value !== "object" || visited.has(value)) {
+      return;
+    }
+
+    visited.add(value);
+
+    if (Array.isArray(value.instructions)) {
+      results.push(value.instructions);
+    }
+
+    for (const child of Object.values(value)) {
+      if (child && typeof child === "object") {
+        walk(child);
+      }
+    }
+  }
+}
+
+function extractTweetsFromEntry(entry, startOrderIndex) {
+  if (!entry || typeof entry !== "object") {
+    return [];
+  }
+
+  const results = [];
+  const content = entry.content;
+
+  if (content && content.entryType === "TimelineTimelineItem") {
+    const tweet = extractTweetFromItemContent(content.itemContent, {
+      orderIndex: startOrderIndex,
+      entryId: entry.entryId,
+      sortIndex: entry.sortIndex,
+      context: content.clientEventInfo && content.clientEventInfo.component
+        ? content.clientEventInfo.component
+        : content.entryType
+    });
+    if (tweet) {
+      results.push(tweet);
+    }
+  }
+
+  if (content && content.entryType === "TimelineTimelineModule" && Array.isArray(content.items)) {
+    let moduleOrder = startOrderIndex;
+    for (const moduleItem of content.items) {
+      const tweet = extractTweetFromItemContent(moduleItem && moduleItem.item && moduleItem.item.itemContent, {
+        orderIndex: moduleOrder++,
+        entryId: moduleItem && moduleItem.entryId,
+        sortIndex: entry.sortIndex,
+        context: content.displayType || content.entryType
+      });
+      if (tweet) {
+        results.push(tweet);
+      }
+    }
+  }
+
+  return results;
+}
+
+function extractTweetFromItemContent(itemContent, options) {
+  if (!itemContent || itemContent.__typename !== "TimelineTweet") {
+    return null;
+  }
+
+  const tweetResult = unwrapTweetResult(itemContent.tweet_results && itemContent.tweet_results.result);
+  if (!tweetResult) {
+    return null;
+  }
+
+  const legacy = tweetResult.legacy || {};
+  const user = unwrapUserResult(tweetResult.core && tweetResult.core.user_results && tweetResult.core.user_results.result);
+  const userLegacy = user && user.legacy ? user.legacy : {};
+  const screenName = user && user.core ? user.core.screen_name : "";
+
+  return {
+    id: tweetResult.rest_id || legacy.id_str || "",
+    position: Number.isFinite(options && options.orderIndex) ? options.orderIndex : Number.POSITIVE_INFINITY,
+    sortIndex: typeof options.sortIndex === "string" ? options.sortIndex : "",
+    context: options && options.context ? String(options.context) : "",
+    suggestionType: itemContent.tweetDisplayType || itemContent.itemType || "",
+    text: extractBestTweetText(tweetResult),
+    authorIds: collectAuthorIds(tweetResult, user, userLegacy),
+    authorHandle: typeof screenName === "string" ? screenName : "",
+    authorName: user && user.core && typeof user.core.name === "string" ? user.core.name : "",
+    createdAtMs: parseDateToMs(legacy.created_at),
+    quotedTweetId: legacy.quoted_status_id_str || "",
+    retweetedTweetId: legacy.retweeted_status_id_str || "",
+    metrics: extractMetrics(tweetResult),
+    media: collectMediaEntries(tweetResult),
+    raw: tweetResult
+  };
+}
+
+function unwrapTweetResult(result) {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+
+  if (result.__typename === "Tweet") {
+    return result;
+  }
+
+  if (result.tweet && result.tweet.__typename === "Tweet") {
+    return result.tweet;
+  }
+
+  if (result.result) {
+    return unwrapTweetResult(result.result);
+  }
+
+  return null;
+}
+
+function unwrapUserResult(result) {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+
+  if (result.__typename === "User") {
+    return result;
+  }
+
+  if (result.result) {
+    return unwrapUserResult(result.result);
+  }
+
+  return null;
+}
+
+function extractBestTweetText(tweetResult) {
+  const legacy = tweetResult && tweetResult.legacy ? tweetResult.legacy : {};
+  const note = tweetResult && tweetResult.note_tweet && tweetResult.note_tweet.note_tweet_results
+    ? tweetResult.note_tweet.note_tweet_results.result
+    : null;
+  const noteText = note && typeof note.text === "string" ? note.text : "";
+  const candidates = [
+    noteText,
+    legacy.full_text,
+    tweetResult && typeof tweetResult.full_text === "string" ? tweetResult.full_text : "",
+    legacy.text
+  ];
+
+  let best = "";
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > best.length) {
+      best = candidate.trim();
+    }
+  }
+
+  return best;
+}
+
+function collectAuthorIds(tweetResult, user, userLegacy) {
+  const ids = new Set();
+  const legacy = tweetResult && tweetResult.legacy ? tweetResult.legacy : {};
+
+  if (legacy.user_id_str) {
+    ids.add(String(legacy.user_id_str));
+  }
+
+  if (user && typeof user.rest_id === "string") {
+    ids.add(user.rest_id);
+  }
+
+  if (userLegacy && typeof userLegacy.id_str === "string") {
+    ids.add(userLegacy.id_str);
+  }
+
+  return Array.from(ids);
+}
+
+function extractMetrics(tweetResult) {
+  const legacy = tweetResult && tweetResult.legacy ? tweetResult.legacy : {};
+  const views = tweetResult && tweetResult.views && tweetResult.views.count ? tweetResult.views.count : legacy.view_count;
+
+  return {
+    reply_count: legacy.reply_count,
+    retweet_count: legacy.retweet_count,
+    favorite_count: legacy.favorite_count,
+    quote_count: legacy.quote_count,
+    view_count: views
+  };
+}
+
+function collectMediaEntries(tweetResult) {
+  const media = [];
+  const seen = new Set();
+  const legacy = tweetResult && tweetResult.legacy ? tweetResult.legacy : {};
+  const allMedia = [
+    ...toArray(legacy.extended_entities && legacy.extended_entities.media),
+    ...toArray(legacy.entities && legacy.entities.media)
+  ];
+
+  const addMedia = (url, label) => {
+    if (typeof url !== "string" || !url.startsWith("http")) {
+      return;
+    }
+
+    const key = `${label}|${url}`;
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    media.push({ key, label, url });
+  };
+
+  for (const mediaItem of allMedia) {
+    addMedia(mediaItem.media_url_https, mediaItem.type || "media");
+    addMedia(mediaItem.expanded_url, `${mediaItem.type || "media"} page`);
+  }
+
+  return media;
+}
+
+function buildTweetUrl(entry) {
+  if (entry.authorHandle) {
+    return `https://x.com/${entry.authorHandle}/status/${entry.id}`;
+  }
+
+  return `https://x.com/i/status/${entry.id}`;
+}
+
+function parseDateToMs(value) {
+  if (typeof value !== "string" || !value) {
+    return 0;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function stableStringify(value) {

@@ -1,19 +1,39 @@
 {
   "manifest_version": 3,
-  "name": "X User Flow Capture",
+  "name": "X Banger Rescue",
   "version": "1.0.0",
-  "description": "Capture the latest ten X user_flow JSON payloads and open a deduplicated composite view.",
+  "description": "Capture the latest ten X HomeLatestTimeline GraphQL responses and open a grouped rescue view.",
   "permissions": [
-    "storage",
-    "webRequest"
+    "storage"
   ],
   "host_permissions": [
-    "https://x.com/i/api/1.1/graphql/user_flow.json*"
+    "https://x.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page-hook.js"
+      ],
+      "matches": [
+        "https://x.com/*"
+      ]
+    }
+  ],
   "action": {
-    "default_title": "Open captured X user_flow payloads"
+    "default_title": "Open X Banger Rescue"
   }
 }
