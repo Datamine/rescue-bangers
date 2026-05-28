@@ -13,7 +13,7 @@ To the Twitter team: please make this a native feature on Twitter. There is no b
 ## Install
 
 - Version: 1.0.0
-- Chrome Web Store Link
+- [Chrome Web Store Link](https://chromewebstore.google.com/detail/nlfkbpjkklnaildcaegaedihigkjcmae)
 
 ## Dependencies/Security
 
